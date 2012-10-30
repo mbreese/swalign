@@ -1,0 +1,1 @@
+v0.2, 2012-10-30 -- Initial upload to pypi, stripped out of TALEN repeat finder
