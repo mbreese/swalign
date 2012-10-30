@@ -2,9 +2,7 @@
 '''
 Simple Smith-Waterman aligner
 '''
-
 import sys
-import os
 import StringIO
 
 
@@ -495,101 +493,6 @@ def revcomp(seq):
     __cache[seq] = ''.join(ret)
     return __cache[seq]
 
-
-def usage():
-    sys.stderr.write(__doc__)
-    sys.stderr.write('''
-Usage: localalign.py {options} ref query
-
-Reference and query arguments can either be written on the command-line, read
-from stdin, or read as FASTA format files. If there is more than one sequence
-in the reference FASTA file, the query will be aligned to all reference
-sequences and only the best scoring alignment will be displayed. If more than
-one sequence is in a query FASTA file, each query sequence will be aligned to
-the reference.
-
-Alignments will be made in both forward and reverse directions.
-
-Options:
-  -m         Match score (default: 2)
-  -mm        Mismatch penalty (default: 1)
-  -gap       Gap penalty (default: 1)
-  -gapext    Gap extension penalty (default: 1)
-  -gapdecay  Decay the gap extension penalty (default: 0.0)
-
-''')
-    sys.exit(1)
-
-
-if __name__ == '__main__':
-    ref = None
-    query = None
-
-    match = 2
-    mismatch = -1
-    gap_penalty = -1
-    gap_extension_penalty = -1
-    gap_extension_decay = 0.0
-    prefer_gaps = True
-    verbose = False
-
-    last = None
-
-    for arg in sys.argv[1:]:
-        if last == '-m':
-            match = int(arg)
-            last = None
-        elif last == '-mm':
-            mismatch = -int(arg)
-            if mismatch > 0:
-                mismatch = -mismatch
-            last = None
-        elif last == '-gap':
-            gap_penalty = -int(arg)
-            if gap_penalty > 0:
-                gap_penalty = -gap_penalty
-            last = None
-        elif last == '-gapext':
-            gap_extension_penalty = -int(arg)
-            if gap_extension_penalty > 0:
-                gap_extension_penalty = -gap_extension_penalty
-            last = None
-        elif last == '-gapdecay':
-            gap_extension_decay = float(arg)
-            if gap_extension_decay < 0:
-                gap_extension_decay = -gap_extension_decay
-            last = None
-        elif arg in ['-m', '-mm', '-gap', '-gapext', '-gapdecay']:
-            last = arg
-        elif arg == '-v':
-            verbose = True
-        elif not ref:
-            if os.path.exists(arg) or arg == '-':
-                ref = fasta_gen(arg)
-            else:
-                ref = seq_gen('cmdline', arg)
-        elif not query:
-            if os.path.exists(arg) or arg == '-':
-                query = fasta_gen(arg)
-            else:
-                query = seq_gen('cmdline', arg)
-
-    if not ref or not query:
-        usage()
-
-    sw = LocalAlignment(NucleotideScoringMatrix(match, mismatch), gap_penalty, gap_extension_penalty, gap_extension_decay=gap_extension_decay, verbose=verbose)
-    for q_name, q_seq in query():
-        best = None
-        for r_name, r_seq in ref():
-            for strand in '+-':
-                if strand == '-':
-                    aln = sw.align(r_seq, revcomp(q_seq), ref_name=r_name, query_name=q_name, rc=True)
-                else:
-                    aln = sw.align(r_seq, q_seq, ref_name=r_name, query_name=q_name)
-                if not best or aln.score > best.score:
-                    best = aln
-        best.dump()
-        print ""
 
 #     sw.align('ACACACTA','AGCACACA').dump()
 #     aln=sw.align("AAGGGGAGGACGATGCGGATGTTC","AGGGAGGACGATGCGG")

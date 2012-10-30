@@ -9,5 +9,5 @@ setup(name='swalign',
       author_email='marcus@breese.com',
       url='http://github.com/mbreese/swalign/',
       packages=['swalign'],
+      scripts=['bin/swalign']
      )
-
