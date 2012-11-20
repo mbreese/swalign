@@ -91,6 +91,9 @@ class LocalAlignment(object):
         self.prefer_gap_runs = prefer_gap_runs
 
     def align(self, ref, query, ref_name='', query_name='', rc=False):
+        orig_ref = ref
+        orig_query = query
+
         ref = ref.upper()
         query = query.upper()
 
@@ -254,7 +257,7 @@ class LocalAlignment(object):
         #         print "new cigar: ", _cigar_str(cigar)
         #         Alignment(query, ref, row, col, _reduce_cigar(aln), max_val, ref_name, query_name, rc).dump()
 
-        return Alignment(query, ref, row, col, cigar, max_val, ref_name, query_name, rc)
+        return Alignment(orig_query, orig_ref, row, col, cigar, max_val, ref_name, query_name, rc)
 
     def dump_matrix(self, ref, query, matrix, path, show_row=-1, show_col=-1):
         sys.stdout.write('      -      ')
@@ -309,6 +312,12 @@ class Alignment(object):
         self.r_name = ref_name
         self.q_name = query_name
         self.rc = rc
+
+        self.orig_query = query
+        self.query = query.upper()
+
+        self.orig_ref = ref
+        self.ref = ref.upper()
 
         q_len = 0
         r_len = 0
@@ -397,8 +406,8 @@ class Alignment(object):
             if op == 'M':
                 q_len += count
                 for k in xrange(count):
-                    q += self.query[j]
-                    r += self.ref[i]
+                    q += self.orig_query[j]
+                    r += self.orig_ref[i]
                     if self.query[j] == self.ref[i]:
                         m += '|'
                     else:
@@ -409,13 +418,13 @@ class Alignment(object):
             elif op == 'D':
                 for k in xrange(count):
                     q += '-'
-                    r += self.ref[i]
+                    r += self.orig_ref[i]
                     m += ' '
                     i += 1
             elif op == 'I':
                 q_len += count
                 for k in xrange(count):
-                    q += self.query[j]
+                    q += self.orig_query[j]
                     r += '-'
                     m += ' '
                     j += 1
@@ -478,7 +487,9 @@ def seq_gen(name, seq):
 
     return gen
 
-__revcomp = {'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A'}
+__revcomp = {}
+for a, b in zip('atcgATCGNn', 'tagcTAGCNn'):
+    __revcomp[a] = b
 __cache = {}
 
 
