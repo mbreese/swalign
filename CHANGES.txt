@@ -1,1 +1,4 @@
-v0.2, 2012-10-30 -- Initial upload to pypi, stripped out of TALEN repeat finder
+0.2, 2012-10-30 -- Initial upload to pypi, stripped out of TALEN repeat finder
+0.3, 2012-11-20 -- Added wrapping to output of command-line swalign, added
+                   support for maintaining upper/lower case in sequences,
+                   added support for wildcard charaters in alignment.
