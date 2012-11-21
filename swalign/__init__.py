@@ -82,13 +82,14 @@ class Matrix(object):
 
 
 class LocalAlignment(object):
-    def __init__(self, scoring_matrix, gap_penalty=-1, gap_extension_penalty=-1, gap_extension_decay=0.0, prefer_gap_runs=True, verbose=False):
+    def __init__(self, scoring_matrix, gap_penalty=-1, gap_extension_penalty=-1, gap_extension_decay=0.0, prefer_gap_runs=True, verbose=False, globalalign=False):
         self.scoring_matrix = scoring_matrix
         self.gap_penalty = gap_penalty
         self.gap_extension_penalty = gap_extension_penalty
         self.gap_extension_decay = gap_extension_decay
         self.verbose = verbose
         self.prefer_gap_runs = prefer_gap_runs
+        self.globalalign = globalalign
 
     def align(self, ref, query, ref_name='', query_name='', rc=False):
         orig_ref = ref
@@ -98,6 +99,11 @@ class LocalAlignment(object):
         query = query.upper()
 
         matrix = Matrix(len(query) + 1, len(ref) + 1, (0, ' ', 0))
+        for row in xrange(1, matrix.rows):
+            matrix.set(row, 0, (0, 'i', 0))
+
+        for col in xrange(1, matrix.cols):
+            matrix.set(0, col, (0, 'd', 0))
 
         max_val = 0
         max_row = 0
@@ -120,7 +126,10 @@ class LocalAlignment(object):
                         if not self.gap_extension_decay:
                             ins_val = matrix.get(row - 1, col)[0] + self.gap_extension_penalty
                         else:
-                            ins_val = matrix.get(row - 1, col)[0] + min(0, self.gap_extension_penalty + ins_run * self.gap_extension_decay)
+                            if self.globalalign:
+                                ins_val = matrix.get(row - 1, col)[0] + min(self.gap_extension_penalty + ins_run * self.gap_extension_decay)
+                            else:
+                                ins_val = matrix.get(row - 1, col)[0] + min(0, self.gap_extension_penalty + ins_run * self.gap_extension_decay)
                 else:
                     ins_val = matrix.get(row - 1, col)[0] + self.gap_penalty
 
@@ -133,12 +142,18 @@ class LocalAlignment(object):
                         if not self.gap_extension_decay:
                             del_val = matrix.get(row, col - 1)[0] + self.gap_extension_penalty
                         else:
-                            del_val = matrix.get(row, col - 1)[0] + min(0, self.gap_extension_penalty + del_run * self.gap_extension_decay)
+                            if self.globalalign:
+                                del_val = matrix.get(row, col - 1)[0] + min(self.gap_extension_penalty + del_run * self.gap_extension_decay)
+                            else:
+                                del_val = matrix.get(row, col - 1)[0] + min(0, self.gap_extension_penalty + del_run * self.gap_extension_decay)
 
                 else:
                     del_val = matrix.get(row, col - 1)[0] + self.gap_penalty
 
-                cell_val = max(mm_val, del_val, ins_val, 0)
+                if self.globalalign:
+                    cell_val = max(mm_val, del_val, ins_val)
+                else:
+                    cell_val = max(mm_val, del_val, ins_val, 0)
 
                 if not self.prefer_gap_runs:
                     ins_run = 0
@@ -165,19 +180,31 @@ class LocalAlignment(object):
                 matrix.set(row, col, val)
 
         # backtrack
-        row = max_row
-        col = max_col
-        val = max_val
-        op = 'm'
+        if self.globalalign:
+            row = matrix.rows - 1
+            col = matrix.cols - 1
+            val = matrix.get(row, col)[0]
+        else:
+            row = max_row
+            col = max_col
+            val = max_val
 
+        op = ''
         aln = []
 
         path = []
-        while val > 0:
+        while True:
+            val, op, runlen = matrix.get(row, col)
+
+            if self.globalalign:
+                if row == 0 and col == 0:
+                    break
+            else:
+                if val <= 0:
+                    break
+
             path.append((row, col))
             aln.append(op)
-
-            op = matrix.get(row, col)[1]
 
             if op == 'm':
                 row -= 1
@@ -189,7 +216,6 @@ class LocalAlignment(object):
             else:
                 break
 
-            val, op, runlen = matrix.get(row, col)
         aln.reverse()
 
         if self.verbose:
@@ -198,7 +224,7 @@ class LocalAlignment(object):
             print (max_row, max_col), max_val
 
         cigar = _reduce_cigar(aln)
-        return Alignment(orig_query, orig_ref, row, col, cigar, max_val, ref_name, query_name, rc)
+        return Alignment(orig_query, orig_ref, row, col, cigar, max_val, ref_name, query_name, rc, self.globalalign)
 
     def dump_matrix(self, ref, query, matrix, path, show_row=-1, show_col=-1):
         sys.stdout.write('      -      ')
@@ -243,7 +269,7 @@ def _cigar_str(cigar):
 
 
 class Alignment(object):
-    def __init__(self, query, ref, q_pos, r_pos, cigar, score, ref_name='', query_name='', rc=False):
+    def __init__(self, query, ref, q_pos, r_pos, cigar, score, ref_name='', query_name='', rc=False, globalalign=False):
         self.query = query
         self.ref = ref
         self.q_pos = q_pos
@@ -253,6 +279,7 @@ class Alignment(object):
         self.r_name = ref_name
         self.q_name = query_name
         self.rc = rc
+        self.globalalign = globalalign
 
         self.orig_query = query
         self.query = query.upper()
