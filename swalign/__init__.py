@@ -198,65 +198,6 @@ class LocalAlignment(object):
             print (max_row, max_col), max_val
 
         cigar = _reduce_cigar(aln)
-        # if not self.regap:
-        # else:
-        #     cigar = []
-        #     last_del = 0
-        #     refpos = 0
-        #     qpos = 0
-
-        #     changed = False
-        #     for size, op in _reduce_cigar(aln):
-        #         if op == 'M':
-        #             if last_del > size and cigar[-1][1] == 'M':
-        #                 gap_seq = ref[col + refpos - last_del:col + refpos]
-        #                 fragment = query[row + qpos: row + qpos + size]
-
-        #                 adjustment = 0
-
-        #                 for a, b in zip(fragment, gap_seq):
-        #                     if a == b:
-        #                         adjustment += 1
-        #                     else:
-        #                         break
-
-        #                 if adjustment:
-        #                     if self.verbose:
-        #                         print "gap_seq :", gap_seq
-        #                         print "fragment:", fragment
-        #                         print "adjustment:", adjustment
-        #                     size -= adjustment
-        #                     cigar[-1] = (cigar[-1][0] + adjustment, 'M')
-        #                     changed = True
-
-        #             if last_del:
-        #                 cigar.append((last_del, 'D'))
-        #                 last_del = 0
-
-        #             refpos += size
-        #             qpos += size
-
-        #             cigar.append((size, op))
-        #         elif op == 'D':
-        #             refpos += size
-        #             last_del = size
-        #         elif op == 'I':
-        #             qpos += size
-        #             if last_del:
-        #                 cigar.append((last_del, 'D'))
-        #                 last_del = 0
-
-        #             cigar.append((size, op))
-
-        #     if last_del:
-        #         cigar.append((last_del, 'D'))
-
-        #     if self.verbose and changed:
-        #         print "re-aligning deletes"
-        #         print "old cigar: ", _cigar_str(_reduce_cigar(aln))
-        #         print "new cigar: ", _cigar_str(cigar)
-        #         Alignment(query, ref, row, col, _reduce_cigar(aln), max_val, ref_name, query_name, rc).dump()
-
         return Alignment(orig_query, orig_ref, row, col, cigar, max_val, ref_name, query_name, rc)
 
     def dump_matrix(self, ref, query, matrix, path, show_row=-1, show_col=-1):
@@ -390,21 +331,20 @@ class Alignment(object):
     def cigar_str(self):
         return _cigar_str(self.cigar)
 
-    def dump(self, out=sys.stdout):
+    def dump(self, wrap=None, out=sys.stdout):
         i = self.r_pos
         j = self.q_pos
 
-        if not self.rc:
-            q = 'Query: %4s ' % self.q_pos
-        else:
-            q = 'Query: %4s ' % (len(self.query) - self.q_pos)
-        r = 'Ref  : %4s ' % self.r_pos
-        m = '            '
+        q = ''
+        m = ''
+        r = ''
+        qlen = 0
+        rlen = 0
 
-        q_len = 0
         for count, op in self.cigar:
             if op == 'M':
-                q_len += count
+                qlen += count
+                rlen += count
                 for k in xrange(count):
                     q += self.orig_query[j]
                     r += self.orig_ref[i]
@@ -416,13 +356,14 @@ class Alignment(object):
                     i += 1
                     j += 1
             elif op == 'D':
+                rlen += count
                 for k in xrange(count):
                     q += '-'
                     r += self.orig_ref[i]
                     m += ' '
                     i += 1
             elif op == 'I':
-                q_len += count
+                qlen += count
                 for k in xrange(count):
                     q += self.orig_query[j]
                     r += '-'
@@ -439,13 +380,67 @@ class Alignment(object):
         if self.r_name:
             out.write('Ref  : %s (%s nt)\n\n' % (self.r_name, len(self.ref)))
 
-        if not self.rc:
-            out.write("%s %s\n" % (q, self.q_end))
-        else:
-            out.write("%s %s\n" % (q, len(self.query) - self.q_pos - q_len + 1))
+        poslens = [self.q_pos + 1, self.q_end + 1, self.r_pos + 1, self.r_end + 1]
+        maxlen = max([len(str(x)) for x in poslens])
 
-        out.write("%s\n" % m)
-        out.write("%s %s\n" % (r, self.r_end))
+        q_pre = 'Query: %%%ss ' % maxlen
+        r_pre = 'Ref  : %%%ss ' % maxlen
+        m_pre = ' ' * (8 + maxlen)
+
+        rpos = self.r_pos
+        if not self.rc:
+            qpos = self.q_pos
+        else:
+            qpos = self.q_end
+
+        while q and r and m:
+            if not self.rc:
+                out.write(q_pre % (qpos + 1))  # pos is displayed as 1-based
+            else:
+                out.write(q_pre % (qpos))  # revcomp is 1-based on the 3' end
+
+            if wrap:
+                qfragment = q[:wrap]
+                mfragment = m[:wrap]
+                rfragment = r[:wrap]
+
+                q = q[wrap:]
+                m = m[wrap:]
+                r = r[wrap:]
+            else:
+                qfragment = q
+                mfragment = m
+                rfragment = r
+
+                q = ''
+                m = ''
+                r = ''
+
+            out.write(qfragment)
+            if not self.rc:
+                for base in qfragment:
+                    if base != '-':
+                        qpos += 1
+            else:
+                for base in qfragment:
+                    if base != '-':
+                        qpos -= 1
+
+            if not self.rc:
+                out.write(' %s\n' % qpos)
+            else:
+                out.write(' %s\n' % (qpos + 1))
+
+            out.write(m_pre)
+            out.write(mfragment)
+            out.write('\n')
+            out.write(r_pre % (rpos + 1))
+            out.write(rfragment)
+            for base in rfragment:
+                if base != '-':
+                    rpos += 1
+            out.write(' %s\n\n' % rpos)
+
         out.write("Score: %s\n" % self.score)
         out.write("Matches: %s (%.1f%%)\n" % (self.matches, self.identity * 100))
         out.write("Mismatches: %s\n" % (self.mismatches,))
