@@ -1,4 +1,4 @@
-Localalign
+swalign
 ===
 
 This package implements a Smith-Waterman style local alignment algorithm. You

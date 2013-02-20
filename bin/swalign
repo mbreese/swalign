@@ -23,13 +23,15 @@ the reference.
 Alignments will be made in both forward and reverse directions.
 
 Options:
-  -m N         Match score (default: 2)
-  -mm N        Mismatch penalty (default: 1)
-  -gap N       Gap penalty (default: 1)
-  -gapext N    Gap extension penalty (default: 1)
-  -gapdecay N  Decay the gap extension penalty (default: 0.0)
-  -wrap N      Wrap alignments when they are longer than N bases
-  -global      Perform a global alignment (experimental)
+  -m N              Match score (default: 2)
+  -mm N             Mismatch penalty (default: 1)
+  -gap N            Gap penalty (default: 1)
+  -gapext N         Gap extension penalty (default: 1)
+  -gapdecay N       Decay the gap extension penalty (default: 0.0)
+  -wrap N           Wrap alignments when they are longer than N bases
+  -global           Perform a global alignment (experimental)
+  -summary fname    Write a summary files of match locations (tab-delimited)
+  -useregion        Use regions for coordinates if included in FASTA ref
 
 Example:
     ~$ swalign AAGGGGAGGACGATGCGGATGTTC AGGGAGGACGATGCGG
@@ -50,6 +52,9 @@ if __name__ == '__main__':
     wrap = None
     verbose = False
     globalalign = False
+    useregion = False
+    summary = False
+    progress = False
 
     last = None
 
@@ -80,12 +85,19 @@ if __name__ == '__main__':
         elif last == '-wrap':
             wrap = int(arg)
             last = None
-        elif arg in ['-m', '-mm', '-gap', '-gapext', '-gapdecay', '-wrap']:
+        elif last == '-summary':
+            summary = arg
+            last = None
+        elif arg in ['-m', '-mm', '-gap', '-gapext', '-gapdecay', '-wrap', '-summary']:
             last = arg
+        elif arg == '-progress':
+            progress = True
         elif arg == '-global':
             globalalign = True
         elif arg == '-v':
             verbose = True
+        elif arg == '-useregion':
+            useregion = True
         elif not ref:
             if os.path.exists(arg) or arg == '-':
                 ref = swalign.fasta_gen(arg)
@@ -105,9 +117,19 @@ if __name__ == '__main__':
         gap_penalty, gap_extension_penalty,
         gap_extension_decay=gap_extension_decay, verbose=verbose, globalalign=globalalign)
 
-    for q_name, q_seq in query():
+    summarized = []
+
+    for q_name, q_seq, q_comments in query():
+        if progress:
+            sys.stderr.write('%s: ' % q_name)
+
         best = None
-        for r_name, r_seq in ref():
+        best_r_comments = None
+        for r_name, r_seq, r_comments in ref():
+            if progress:
+                sys.stderr.write('.')
+                sys.stderr.flush()
+
             for strand in '+-':
                 if strand == '-':
                     aln = sw.align(r_seq, swalign.revcomp(q_seq),
@@ -119,5 +141,25 @@ if __name__ == '__main__':
 
                 if not best or aln.score > best.score:
                     best = aln
+                    best_r_comments = r_comments
+
+        if progress:
+            sys.stderr.write('\n')
+            sys.stderr.flush()
+
+        if useregion:
+            ref_start = swalign.extract_region(best_r_comments)
+            if ref_start:
+                best.set_ref_offset(*ref_start)
+
         best.dump(wrap)
+
+        if summary:
+            summarized.append((q_name, best.r_name, best.q_pos, best.q_end, best.r_pos + best.r_offset, best.r_end + best.r_offset, '-' if best.rc else '+', best.cigar_str))
         print ""
+
+    if summary:
+        with open(summary, 'w') as f:
+            f.write("query\tref\tquery_start\tquery_end\tref_start\tref_end\tstrand\tcigar\n")
+            for s in summarized:
+                f.write('%s\n' % '\t'.join([str(x) for x in s]))

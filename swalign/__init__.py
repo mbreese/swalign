@@ -281,6 +281,9 @@ class Alignment(object):
         self.rc = rc
         self.globalalign = globalalign
 
+        self.r_offset = 0
+        self.r_region = None
+
         self.orig_query = query
         self.query = query.upper()
 
@@ -323,6 +326,11 @@ class Alignment(object):
             self.identity = float(self.matches) / (self.mismatches + self.matches)
         else:
             self.identity = 0
+
+    def set_ref_offset(self, ref, offset, region):
+        self.r_name = ref
+        self.r_offset = offset
+        self.r_region = region
 
     @property
     def extended_cigar_str(self):
@@ -405,9 +413,12 @@ class Alignment(object):
         if self.q_name:
             out.write('Query: %s%s (%s nt)\n' % (self.q_name, ' (reverse-compliment)' if self.rc else '', len(self.query)))
         if self.r_name:
-            out.write('Ref  : %s (%s nt)\n\n' % (self.r_name, len(self.ref)))
+            if self.r_region:
+                out.write('Ref  : %s (%s)\n\n' % (self.r_name, self.r_region))
+            else:
+                out.write('Ref  : %s (%s nt)\n\n' % (self.r_name, len(self.ref)))
 
-        poslens = [self.q_pos + 1, self.q_end + 1, self.r_pos + 1, self.r_end + 1]
+        poslens = [self.q_pos + 1, self.q_end + 1, self.r_pos + self.r_offset + 1, self.r_end + self.r_offset + 1]
         maxlen = max([len(str(x)) for x in poslens])
 
         q_pre = 'Query: %%%ss ' % maxlen
@@ -461,12 +472,12 @@ class Alignment(object):
             out.write(m_pre)
             out.write(mfragment)
             out.write('\n')
-            out.write(r_pre % (rpos + 1))
+            out.write(r_pre % (rpos + self.r_offset + 1))
             out.write(rfragment)
             for base in rfragment:
                 if base != '-':
                     rpos += 1
-            out.write(' %s\n\n' % rpos)
+            out.write(' %s\n\n' % (rpos + self.r_offset))
 
         out.write("Score: %s\n" % self.score)
         out.write("Matches: %s (%.1f%%)\n" % (self.matches, self.identity * 100))
@@ -478,6 +489,7 @@ def fasta_gen(fname):
     def gen():
         seq = ''
         name = ''
+        comments = ''
 
         if fname == '-':
             f = sys.stdin
@@ -488,15 +500,21 @@ def fasta_gen(fname):
         for line in f:
             if line[0] == '>':
                 if name and seq:
-                    yield (name, seq)
+                    yield (name, seq, comments)
 
-                name = line[1:].strip().split(' ')[0]
+                spl = line[1:].strip().split(' ', 1)
+                name = spl[0]
+                if len(spl) > 1:
+                    comments = spl[1]
+                else:
+                    comments = ''
+
                 seq = ''
             else:
                 seq += line.strip()
 
         if name and seq:
-            yield (name, seq)
+            yield (name, seq, comments)
 
         if fname != '-':
             f.close()
@@ -505,9 +523,38 @@ def fasta_gen(fname):
 
 def seq_gen(name, seq):
     def gen():
-        yield (name, seq)
+        yield (name, seq, '')
 
     return gen
+
+
+def extract_region(comments):
+    ref = None
+    start = None
+    # start_offset = 0
+    # end_offset = 0
+
+    try:
+        attrs = comments.split(' ')
+        for attr in attrs:
+            if '=' in attr:
+                k, v = attr.split('=')
+                if k == 'range':
+                    spl = v.split(':')
+                    ref = spl[0]
+                    start, end = [int(x) for x in spl[1].split('-')]
+                # elif k == "5'pad":
+                #     start_offset = int(v)
+                # elif k == "3'pad":
+                #     end_offset = int(v)
+    except:
+        pass
+
+    if ref and start:
+        return (ref, start - 1, '%s:%s-%s' % (ref, start, end))
+
+    return None
+
 
 __revcomp = {}
 for a, b in zip('atcgATCGNn', 'tagcTAGCNn'):
