@@ -5,8 +5,11 @@ Simple Smith-Waterman aligner
 
 import sys
 import os
-import swalign
-
+try:
+    import swalign
+except:
+    sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+    import swalign
 
 def usage():
     sys.stderr.write(__doc__)
