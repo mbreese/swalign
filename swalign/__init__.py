@@ -21,7 +21,7 @@ class ScoringMatrix(object):
     Rows and Columns must be in the same order
 
     '''
-    def __init__(self, filename=None, text=None):
+    def __init__(self, filename=None, text=None, wildcard_score=0):
         assert filename or text
 
         if filename:
@@ -31,6 +31,7 @@ class ScoringMatrix(object):
 
         self.scores = []
         self.bases = None
+        self.wildcard_score = wildcard_score
 
         for line in fs:
             if line[0] == '#':
@@ -45,7 +46,10 @@ class ScoringMatrix(object):
 
         fs.close()
 
-    def score(self, one, two):
+    def score(self, one, two, wildcard=None):
+        if self.wildcard_score and wildcard and (one in wildcard or two in wildcard):
+            return self.wildcard_score
+
         one_idx = 0
         two_idx = 0
         for i, b in enumerate(self.bases):
@@ -57,15 +61,20 @@ class ScoringMatrix(object):
         return self.scores[(one_idx * self.base_count) + two_idx]
 
 
-class NucleotideScoringMatrix(object):
+class IdentityScoringMatrix(object):
     def __init__(self, match=1, mismatch=-1):
         self.match = match
         self.mismatch = mismatch
 
-    def score(self, one, two):
+    def score(self, one, two, wildcard=None):
+        if wildcard and (one in wildcard or two in wildcard):
+            return self.match
+
         if one == two:
             return self.match
         return self.mismatch
+
+NucleotideScoringMatrix = IdentityScoringMatrix
 
 
 class Matrix(object):
@@ -82,7 +91,7 @@ class Matrix(object):
 
 
 class LocalAlignment(object):
-    def __init__(self, scoring_matrix, gap_penalty=-1, gap_extension_penalty=-1, gap_extension_decay=0.0, prefer_gap_runs=True, verbose=False, globalalign=False):
+    def __init__(self, scoring_matrix, gap_penalty=-1, gap_extension_penalty=-1, gap_extension_decay=0.0, prefer_gap_runs=True, verbose=False, globalalign=False, wildcard=None):
         self.scoring_matrix = scoring_matrix
         self.gap_penalty = gap_penalty
         self.gap_extension_penalty = gap_extension_penalty
@@ -90,6 +99,7 @@ class LocalAlignment(object):
         self.verbose = verbose
         self.prefer_gap_runs = prefer_gap_runs
         self.globalalign = globalalign
+        self.wildcard = wildcard
 
     def align(self, ref, query, ref_name='', query_name='', rc=False):
         orig_ref = ref
@@ -112,7 +122,7 @@ class LocalAlignment(object):
         # calculate matrix
         for row in xrange(1, matrix.rows):
             for col in xrange(1, matrix.cols):
-                mm_val = matrix.get(row - 1, col - 1)[0] + self.scoring_matrix.score(query[row - 1], ref[col - 1])
+                mm_val = matrix.get(row - 1, col - 1)[0] + self.scoring_matrix.score(query[row - 1], ref[col - 1], self.wildcard)
 
                 ins_run = 0
                 del_run = 0
@@ -224,7 +234,7 @@ class LocalAlignment(object):
             print (max_row, max_col), max_val
 
         cigar = _reduce_cigar(aln)
-        return Alignment(orig_query, orig_ref, row, col, cigar, max_val, ref_name, query_name, rc, self.globalalign)
+        return Alignment(orig_query, orig_ref, row, col, cigar, max_val, ref_name, query_name, rc, self.globalalign, self.wildcard)
 
     def dump_matrix(self, ref, query, matrix, path, show_row=-1, show_col=-1):
         sys.stdout.write('      -      ')
@@ -269,7 +279,7 @@ def _cigar_str(cigar):
 
 
 class Alignment(object):
-    def __init__(self, query, ref, q_pos, r_pos, cigar, score, ref_name='', query_name='', rc=False, globalalign=False):
+    def __init__(self, query, ref, q_pos, r_pos, cigar, score, ref_name='', query_name='', rc=False, globalalign=False, wildcard=None):
         self.query = query
         self.ref = ref
         self.q_pos = q_pos
@@ -280,6 +290,7 @@ class Alignment(object):
         self.q_name = query_name
         self.rc = rc
         self.globalalign = globalalign
+        self.wildcard = wildcard
 
         self.r_offset = 0
         self.r_region = None
@@ -383,7 +394,7 @@ class Alignment(object):
                 for k in xrange(count):
                     q += self.orig_query[j]
                     r += self.orig_ref[i]
-                    if self.query[j] == self.ref[i]:
+                    if self.query[j] == self.ref[i] or (self.wildcard and (self.query[j] in self.wildcard or self.ref[i] in self.wildcard)):
                         m += '|'
                     else:
                         m += '.'
