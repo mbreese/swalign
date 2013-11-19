@@ -10,6 +10,7 @@ subject to a decay to prioritize long gaps.
 The input files are FASTA format sequences, or strings of sequences.
 
 Here is some skeleton code to get you started:
+
 	import swalign
 	# choose your own values here… 2 and -1 are common.
 	match = 2
