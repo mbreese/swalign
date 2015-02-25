@@ -137,10 +137,7 @@ class LocalAlignment(object):
                         if not self.gap_extension_decay:
                             ins_val = matrix.get(row - 1, col)[0] + self.gap_extension_penalty
                         else:
-                            if self.globalalign:
-                                ins_val = matrix.get(row - 1, col)[0] + min(0, self.gap_extension_penalty + ins_run * self.gap_extension_decay)
-                            else:
-                                ins_val = matrix.get(row - 1, col)[0] + min(0, self.gap_extension_penalty + ins_run * self.gap_extension_decay)
+                            ins_val = matrix.get(row - 1, col)[0] + min(0, self.gap_extension_penalty + ins_run * self.gap_extension_decay)
                 else:
                     ins_val = matrix.get(row - 1, col)[0] + self.gap_penalty
 
@@ -153,15 +150,12 @@ class LocalAlignment(object):
                         if not self.gap_extension_decay:
                             del_val = matrix.get(row, col - 1)[0] + self.gap_extension_penalty
                         else:
-                            if self.globalalign:
-                                del_val = matrix.get(row, col - 1)[0] + min(0, self.gap_extension_penalty + del_run * self.gap_extension_decay)
-                            else:
-                                del_val = matrix.get(row, col - 1)[0] + min(0, self.gap_extension_penalty + del_run * self.gap_extension_decay)
+                            del_val = matrix.get(row, col - 1)[0] + min(0, self.gap_extension_penalty + del_run * self.gap_extension_decay)
 
                 else:
                     del_val = matrix.get(row, col - 1)[0] + self.gap_penalty
 
-                if self.globalalign:
+                if self.globalalign or self.full_query:
                     cell_val = max(mm_val, del_val, ins_val)
                 else:
                     cell_val = max(mm_val, del_val, ins_val, 0)
@@ -222,6 +216,9 @@ class LocalAlignment(object):
 
             if self.globalalign:
                 if row == 0 and col == 0:
+                    break
+            elif self.full_query:
+                if row == 0:
                     break
             else:
                 if val <= 0:
