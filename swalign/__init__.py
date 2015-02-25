@@ -137,7 +137,7 @@ class LocalAlignment(object):
                             ins_val = matrix.get(row - 1, col)[0] + self.gap_extension_penalty
                         else:
                             if self.globalalign:
-                                ins_val = matrix.get(row - 1, col)[0] + min(self.gap_extension_penalty + ins_run * self.gap_extension_decay)
+                                ins_val = matrix.get(row - 1, col)[0] + min(0, self.gap_extension_penalty + ins_run * self.gap_extension_decay)
                             else:
                                 ins_val = matrix.get(row - 1, col)[0] + min(0, self.gap_extension_penalty + ins_run * self.gap_extension_decay)
                 else:
@@ -153,7 +153,7 @@ class LocalAlignment(object):
                             del_val = matrix.get(row, col - 1)[0] + self.gap_extension_penalty
                         else:
                             if self.globalalign:
-                                del_val = matrix.get(row, col - 1)[0] + min(self.gap_extension_penalty + del_run * self.gap_extension_decay)
+                                del_val = matrix.get(row, col - 1)[0] + min(0, self.gap_extension_penalty + del_run * self.gap_extension_decay)
                             else:
                                 del_val = matrix.get(row, col - 1)[0] + min(0, self.gap_extension_penalty + del_run * self.gap_extension_decay)
 
