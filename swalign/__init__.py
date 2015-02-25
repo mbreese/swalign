@@ -91,7 +91,7 @@ class Matrix(object):
 
 
 class LocalAlignment(object):
-    def __init__(self, scoring_matrix, gap_penalty=-1, gap_extension_penalty=-1, gap_extension_decay=0.0, prefer_gap_runs=True, verbose=False, globalalign=False, wildcard=None):
+    def __init__(self, scoring_matrix, gap_penalty=-1, gap_extension_penalty=-1, gap_extension_decay=0.0, prefer_gap_runs=True, verbose=False, globalalign=False, wildcard=None, full_query=False):
         self.scoring_matrix = scoring_matrix
         self.gap_penalty = gap_penalty
         self.gap_extension_penalty = gap_extension_penalty
@@ -100,6 +100,7 @@ class LocalAlignment(object):
         self.prefer_gap_runs = prefer_gap_runs
         self.globalalign = globalalign
         self.wildcard = wildcard
+        self.full_query = full_query
 
     def align(self, ref, query, ref_name='', query_name='', rc=False):
         orig_ref = ref
@@ -191,10 +192,23 @@ class LocalAlignment(object):
 
         # backtrack
         if self.globalalign:
+            # backtrack from last cell
             row = matrix.rows - 1
             col = matrix.cols - 1
             val = matrix.get(row, col)[0]
+        elif self.full_query:
+            # backtrack from max in last row
+            row = matrix.rows - 1
+            max_val = 0
+            col = 0
+            for c in xrange(1, matrix.cols):
+                if matrix.get(row, c)[0] > max_val:
+                    col = c
+                    max_val = matrix.get(row, c)[0]
+            col = matrix.cols - 1
+            val = matrix.get(row, col)[0]
         else:
+            # backtrack from max
             row = max_row
             col = max_col
             val = max_val

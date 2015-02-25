@@ -33,6 +33,7 @@ Options:
   -gapdecay N       Decay the gap extension penalty (default: 0.0)
   -wrap N           Wrap alignments when they are longer than N bases
   -global           Perform a global alignment (experimental)
+  -query            Align the full query sequence (mix of local/global)
   -summary fname    Write a summary files of match locations (tab-delimited)
   -useregion        Use regions for coordinates if included in FASTA ref
 
@@ -58,6 +59,7 @@ if __name__ == '__main__':
     useregion = False
     summary = False
     progress = False
+    full_query = False
 
     last = None
 
@@ -99,6 +101,8 @@ if __name__ == '__main__':
             globalalign = True
         elif arg == '-v':
             verbose = True
+        elif arg == '-query':
+            full_query = True
         elif arg == '-useregion':
             useregion = True
         elif not ref:
@@ -118,7 +122,7 @@ if __name__ == '__main__':
     sw = swalign.LocalAlignment(
         swalign.NucleotideScoringMatrix(match, mismatch),
         gap_penalty, gap_extension_penalty,
-        gap_extension_decay=gap_extension_decay, verbose=verbose, globalalign=globalalign)
+        gap_extension_decay=gap_extension_decay, verbose=verbose, globalalign=globalalign, full_query=full_query)
 
     summarized = []
 
