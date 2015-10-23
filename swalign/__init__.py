@@ -42,7 +42,7 @@ class ScoringMatrix(object):
                 self.base_count = len(self.bases)
             else:
                 cols = line.split()
-                self.scores.extend([int(x) for x in cols[1:]])
+                self.scores.extend([float(x) for x in cols[1:]])
 
         fs.close()
 
