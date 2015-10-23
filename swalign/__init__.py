@@ -34,7 +34,7 @@ class ScoringMatrix(object):
         self.wildcard_score = wildcard_score
 
         for line in fs:
-            if line[0] == '#':
+            if line[0] == '#' or not line.strip():
                 continue
 
             if not self.bases:
