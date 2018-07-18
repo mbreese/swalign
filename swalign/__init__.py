@@ -241,8 +241,8 @@ class LocalAlignment(object):
 
         if self.verbose:
             self.dump_matrix(ref, query, matrix, path)
-            print aln
-            print (max_row, max_col), max_val
+            print(aln)
+            print((max_row, max_col), max_val)
 
         cigar = _reduce_cigar(aln)
         return Alignment(orig_query, orig_ref, row, col, cigar, max_val, ref_name, query_name, rc, self.globalalign, self.wildcard)
