@@ -3,7 +3,7 @@
 Simple Smith-Waterman aligner
 '''
 import sys
-import StringIO
+from io import StringIO
 
 
 class ScoringMatrix(object):
@@ -110,10 +110,10 @@ class LocalAlignment(object):
         query = query.upper()
 
         matrix = Matrix(len(query) + 1, len(ref) + 1, (0, ' ', 0))
-        for row in xrange(1, matrix.rows):
+        for row in range(1, matrix.rows):
             matrix.set(row, 0, (0, 'i', 0))
 
-        for col in xrange(1, matrix.cols):
+        for col in range(1, matrix.cols):
             matrix.set(0, col, (0, 'd', 0))
 
         max_val = 0
@@ -121,8 +121,8 @@ class LocalAlignment(object):
         max_col = 0
 
         # calculate matrix
-        for row in xrange(1, matrix.rows):
-            for col in xrange(1, matrix.cols):
+        for row in range(1, matrix.rows):
+            for col in range(1, matrix.cols):
                 mm_val = matrix.get(row - 1, col - 1)[0] + self.scoring_matrix.score(query[row - 1], ref[col - 1], self.wildcard)
 
                 ins_run = 0
@@ -195,7 +195,7 @@ class LocalAlignment(object):
             row = matrix.rows - 1
             max_val = 0
             col = 0
-            for c in xrange(1, matrix.cols):
+            for c in range(1, matrix.cols):
                 if matrix.get(row, c)[0] > max_val:
                     col = c
                     max_val = matrix.get(row, c)[0]
@@ -241,8 +241,8 @@ class LocalAlignment(object):
 
         if self.verbose:
             self.dump_matrix(ref, query, matrix, path)
-            print aln
-            print (max_row, max_col), max_val
+            print(aln)
+            print((max_row, max_col), max_val)
 
         cigar = _reduce_cigar(aln)
         return Alignment(orig_query, orig_ref, row, col, cigar, max_val, ref_name, query_name, rc, self.globalalign, self.wildcard)
@@ -251,13 +251,13 @@ class LocalAlignment(object):
         sys.stdout.write('      -      ')
         sys.stdout.write('       '.join(ref))
         sys.stdout.write('\n')
-        for row in xrange(matrix.rows):
+        for row in range(matrix.rows):
             if row == 0:
                 sys.stdout.write('-')
             else:
                 sys.stdout.write(query[row - 1])
 
-            for col in xrange(matrix.cols):
+            for col in range(matrix.cols):
                 if show_row == row and show_col == col:
                     sys.stdout.write('       *')
                 else:
@@ -325,7 +325,7 @@ class Alignment(object):
             if op == 'M':
                 q_len += count
                 r_len += count
-                for k in xrange(count):
+                for k in range(count):
                     if self.query[j] == self.ref[i]:
                         self.matches += 1
                     else:
@@ -362,7 +362,7 @@ class Alignment(object):
         working = []
         for count, op in self.cigar:
             if op == 'M':
-                for k in xrange(count):
+                for k in range(count):
                     if self.query[self.q_pos + qpos + k] == self.ref[self.r_pos + rpos + k]:
                         ext_cigar_str += 'M'
                     else:
@@ -402,7 +402,7 @@ class Alignment(object):
             if op == 'M':
                 qlen += count
                 rlen += count
-                for k in xrange(count):
+                for k in range(count):
                     q += self.orig_query[j]
                     r += self.orig_ref[i]
                     if self.query[j] == self.ref[i] or (self.wildcard and (self.query[j] in self.wildcard or self.ref[i] in self.wildcard)):
@@ -414,14 +414,14 @@ class Alignment(object):
                     j += 1
             elif op == 'D':
                 rlen += count
-                for k in xrange(count):
+                for k in range(count):
                     q += '-'
                     r += self.orig_ref[i]
                     m += ' '
                     i += 1
             elif op == 'I':
                 qlen += count
-                for k in xrange(count):
+                for k in range(count):
                     q += self.orig_query[j]
                     r += '-'
                     m += ' '
