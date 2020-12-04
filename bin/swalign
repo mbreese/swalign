@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 '''
 Simple Smith-Waterman aligner
 '''
@@ -163,7 +163,7 @@ if __name__ == '__main__':
 
         if summary:
             summarized.append((q_name, best.r_name, best.q_pos, best.q_end, best.r_pos + best.r_offset, best.r_end + best.r_offset, '-' if best.rc else '+', best.cigar_str))
-        print ""
+        sys.stdout.write('\n')
 
     if summary:
         with open(summary, 'w') as f:
