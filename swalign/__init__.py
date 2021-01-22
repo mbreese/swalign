@@ -124,6 +124,7 @@ class LocalAlignment(object):
         # calculate matrix
         for row in range(1, matrix.rows):
 
+            # saving matrix values and re-using them across columns as locals improves performance
             left = matrix.get(row, 0)
             diag = matrix.get(row - 1, 0)
             up = matrix.get(row - 1, 1)
@@ -190,7 +191,7 @@ class LocalAlignment(object):
 
                 matrix.set(row, col, val)
 
-                # adjust all values
+                # adjust temp values to reduce total matrix accesses
                 diag = up
                 left = val
                 if(col + 1 < matrix.cols):
