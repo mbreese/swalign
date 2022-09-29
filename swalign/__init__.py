@@ -27,7 +27,7 @@ class ScoringMatrix(object):
         if filename:
             fs = open(filename)
         else:
-            fs = StringIO.StringIO(text)
+            fs = StringIO(text)
 
         self.scores = []
         self.bases = None
