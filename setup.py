@@ -4,7 +4,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setup(name='swalign',
-      version='0.3.6',
+      version='0.3.7',
       description='Smith-Waterman local aligner',
       long_description=long_description,
       long_description_content_type="text/markdown",
