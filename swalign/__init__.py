@@ -103,6 +103,7 @@ class LocalAlignment(object):
         self.full_query = full_query
 
     def align(self, ref, query, ref_name='', query_name='', rc=False):
+
         orig_ref = ref
         orig_query = query
 
@@ -122,38 +123,44 @@ class LocalAlignment(object):
 
         # calculate matrix
         for row in range(1, matrix.rows):
+
+            # saving matrix values and re-using them across columns as locals improves performance
+            left = matrix.get(row, 0)
+            diag = matrix.get(row - 1, 0)
+            up = matrix.get(row - 1, 1)
+
             for col in range(1, matrix.cols):
-                mm_val = matrix.get(row - 1, col - 1)[0] + self.scoring_matrix.score(query[row - 1], ref[col - 1], self.wildcard)
+                mm_val = diag[0] + self.scoring_matrix.score(query[row - 1], ref[col - 1], self.wildcard)
 
                 ins_run = 0
                 del_run = 0
 
-                if matrix.get(row - 1, col)[1] == 'i':
-                    ins_run = matrix.get(row - 1, col)[2]
-                    if matrix.get(row - 1, col)[0] == 0:
+                if up[1] == 'i':
+                    ins_run = up[2]
+                    if up[0] == 0:
                         # no penalty to start the alignment
                         ins_val = 0
                     else:
                         if not self.gap_extension_decay:
-                            ins_val = matrix.get(row - 1, col)[0] + self.gap_extension_penalty
+                            ins_val = up[0] + self.gap_extension_penalty
                         else:
-                            ins_val = matrix.get(row - 1, col)[0] + min(0, self.gap_extension_penalty + ins_run * self.gap_extension_decay)
+                            ins_val = up[0] + min(0, self.gap_extension_penalty + ins_run * self.gap_extension_decay)
                 else:
-                    ins_val = matrix.get(row - 1, col)[0] + self.gap_penalty
+                    ins_val = up[0] + self.gap_penalty
 
-                if matrix.get(row, col - 1)[1] == 'd':
-                    del_run = matrix.get(row, col - 1)[2]
-                    if matrix.get(row, col - 1)[0] == 0:
+                if left[1] == 'd':
+                    del_run = left[2]
+                    if left[0] == 0:
                         # no penalty to start the alignment
                         del_val = 0
                     else:
                         if not self.gap_extension_decay:
-                            del_val = matrix.get(row, col - 1)[0] + self.gap_extension_penalty
+                            del_val = left[0] + self.gap_extension_penalty
                         else:
-                            del_val = matrix.get(row, col - 1)[0] + min(0, self.gap_extension_penalty + del_run * self.gap_extension_decay)
+                            del_val = left[0] + min(0, self.gap_extension_penalty + del_run * self.gap_extension_decay)
 
                 else:
-                    del_val = matrix.get(row, col - 1)[0] + self.gap_penalty
+                    del_val = left[0] + self.gap_penalty
 
                 if self.globalalign or self.full_query:
                     cell_val = max(mm_val, del_val, ins_val)
@@ -184,6 +191,12 @@ class LocalAlignment(object):
 
                 matrix.set(row, col, val)
 
+                # adjust temp values to reduce total matrix accesses
+                diag = up
+                left = val
+                if(col + 1 < matrix.cols):
+                    up = matrix.get(row - 1, col + 1)
+                
         # backtrack
         if self.globalalign:
             # backtrack from last cell
